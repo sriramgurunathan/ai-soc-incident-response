@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApexShield // SOC Security Operations Console</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/static-soc/css/soc.css">
+</head>
+<body class="hud-grid-bg min-h-screen flex flex-col text-gray-100">
+
+  <!-- TOP SOC HUD HEADER -->
+  <header class="border-b border-gray-800 bg-[#070c14]/90 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+          <i data-lucide="shield-alert" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-white text-base tracking-wider">APEX<span class="text-emerald-400">SOC</span></span>
+            <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">OPERATIONS CENTER</span>
+          </div>
+          <span class="text-[11px] text-gray-400 font-mono">Restricted Security Gateway</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-gray-900 border border-gray-800 text-xs font-mono">
+          <span id="ws-status-badge" class="pulse-green"></span>
+          <span class="text-gray-300">SENSOR FEED: <strong id="ws-status-label" class="text-emerald-400">CONNECTING...</strong></span>
+        </div>
+        <a href="/" class="text-xs text-gray-400 hover:text-white border border-gray-800 rounded px-2.5 py-1">
+          ← Company Portal
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+
+    <!-- 1. SOC AUTHENTICATION GATE (LOGIN SCREEN) -->
+    <div id="soc-auth-view" class="max-w-md mx-auto my-12">
+      <div class="soc-card p-6 sm:p-8 space-y-6 border-emerald-500/30">
+        <div class="text-center space-y-2">
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 mx-auto flex items-center justify-center">
+            <i data-lucide="shield-check" class="w-6 h-6"></i>
+          </div>
+          <h2 class="text-xl font-bold text-white font-mono">SOC Operations Authentication</h2>
+          <p class="text-xs text-gray-400">Requires Security Clearance (Admin & SOC Analysts)</p>
+        </div>
+
+        <div id="soc-login-alert" class="hidden p-3 rounded-lg bg-red-950/80 border border-red-500/60 text-xs text-red-300 font-mono"></div>
+
+        <form onsubmit="handleSocLogin(event)" class="space-y-4 font-mono text-xs">
+          <div>
+            <label class="block text-gray-300 mb-1">SOC Operator Username</label>
+            <input type="text" id="soc-username" placeholder="Username or Operator ID" required class="w-full px-3 py-2 bg-black border border-gray-800 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+          </div>
+
+          <div>
+            <label class="block text-gray-300 mb-1">Security Key / Password</label>
+            <input type="password" id="soc-password" placeholder="Enter security password" required class="w-full px-3 py-2 bg-black border border-gray-800 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+          </div>
+
+          <button type="submit" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors">
+            <i data-lucide="key" class="w-4 h-4"></i> Access Operations Center
+          </button>
+        </form>
+
+        <div class="text-[11px] text-gray-500 p-3 rounded bg-gray-950 border border-gray-900">
+          <strong class="text-gray-400">Security Notice:</strong> Access is strictly restricted to authorized Administrators and SOC Analysts. All authentication attempts are monitored.
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. SOC OPERATIONS CONSOLE WORKSPACE -->
+    <div id="soc-console-view" class="hidden space-y-6">
+
+      <!-- OPERATOR STATUS BAR & NAVIGATION -->
+      <div class="soc-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+            <i data-lucide="user-check" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 font-mono">
+              <span class="font-bold text-white text-sm" id="soc-user-name">Administrator</span>
+              <span id="soc-admin-badge" class="px-2 py-0.2 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">ADMIN PRIVILEGES</span>
+            </div>
+            <p class="text-xs text-gray-400 font-mono" id="soc-user-role">Lead Security Administrator</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="switchSocSubTab('incidents')" id="tab-btn-incidents" class="px-3 py-1.5 rounded-lg text-xs font-mono font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Live Incidents
+          </button>
+          <button onclick="switchSocSubTab('approvals')" id="tab-btn-approvals" class="px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-gray-400 hover:text-white border border-transparent flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="key-round" class="w-3.5 h-3.5 text-amber-400"></i> Approvals
+            <span id="pending-approvals-badge" class="hidden px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/40">0</span>
+          </button>
+          <button onclick="switchSocSubTab('coworkers')" id="tab-btn-coworkers" class="px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-gray-400 hover:text-white border border-transparent flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="users" class="w-3.5 h-3.5"></i> Co-Workers Team
+          </button>
+          <button onclick="switchSocSubTab('simulator')" id="tab-btn-simulator" class="px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-gray-400 hover:text-white border border-transparent flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="crosshair" class="w-3.5 h-3.5"></i> Threat Simulator
+          </button>
+          <button onclick="handleSocLogout()" class="px-3 py-1.5 rounded-lg text-xs font-mono text-red-400 hover:bg-red-500/10 border border-red-500/30 cursor-pointer">
+            Sign Out
+          </button>
+        </div>
+      </div>
+
+      <!-- LIVE ALERT BANNER (Flashing Red when burst occurs) -->
+      <div id="live-threat-banner" class="hidden p-4 rounded-xl soc-card-danger flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span class="pulse-red shrink-0"></span>
+          <p id="alert-banner-text" class="text-xs font-mono font-bold text-red-300">
+            [CRITICAL ALERT] Automated brute force attack detected!
+          </p>
+        </div>
+        <button onclick="dismissThreatBanner()" class="text-xs font-mono text-red-400 hover:text-white underline cursor-pointer">
+          Dismiss
+        </button>
+      </div>
+
+      <!-- METRIC CARDS -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="soc-card p-4">
+          <span class="text-[11px] font-mono text-gray-400 block">TOTAL EVENTS</span>
+          <span class="text-2xl font-bold font-mono text-white mt-1 block" id="stat-events">0</span>
+        </div>
+        <div class="soc-card p-4">
+          <span class="text-[11px] font-mono text-gray-400 block">ACTIVE INCIDENTS</span>
+          <span class="text-2xl font-bold font-mono text-red-400 mt-1 block" id="stat-incidents">0</span>
+        </div>
+        <div class="soc-card p-4">
+          <span class="text-[11px] font-mono text-gray-400 block">QUARANTINED USERS</span>
+          <span class="text-2xl font-bold font-mono text-amber-400 mt-1 block" id="stat-locked">0</span>
+        </div>
+        <div class="soc-card p-4">
+          <span class="text-[11px] font-mono text-gray-400 block">BLOCKED IPS</span>
+          <span class="text-2xl font-bold font-mono text-purple-400 mt-1 block" id="stat-blocked-ips">0</span>
+        </div>
+      </div>
+
+      <!-- EMERGENCY LOCKDOWN CARD (Admin Only) -->
+      <div id="emergency-lockdown-card" class="p-4 rounded-xl bg-red-950/40 border border-red-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 text-red-400 font-bold text-xs font-mono">
+            <i data-lucide="shield-alert" class="w-4 h-4"></i>
+            <span>EMERGENCY ACCESS CONTROLS (ADMIN ONLY)</span>
+          </div>
+          <p class="text-xs text-gray-300">
+            Emergency lockdown locks all regular employees out of the company portal immediately in case of an active ransomware or credential-stuffing wave.
+          </p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button onclick="triggerEmergencyLockdown()" class="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-mono text-xs font-bold flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="lock" class="w-3.5 h-3.5"></i> Lock All Employees
+          </button>
+          <button onclick="triggerEmergencyUnlock()" class="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/40 flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="unlock" class="w-3.5 h-3.5"></i> Lift Lockdown
+          </button>
+        </div>
+      </div>
+
+      <!-- SUBTAB 1: INCIDENTS & LIVE TELEMETRY -->
+      <div id="subtab-incidents" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Incidents List (7 cols) -->
+        <div class="lg:col-span-7 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-mono text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="flame" class="w-4 h-4 text-red-400"></i> Active Security Incidents (Brute Force)
+            </h3>
+            <span class="text-xs font-mono text-gray-500" id="incident-count-badge">0 INCIDENTS</span>
+          </div>
+
+          <div class="soc-card overflow-hidden">
+            <div class="overflow-x-auto max-h-[460px] terminal-scroll">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-black/80 border-b border-gray-800 text-gray-400 font-mono">
+                  <tr>
+                    <th class="p-3">INCIDENT</th>
+                    <th class="p-3">TYPE</th>
+                    <th class="p-3">SEVERITY</th>
+                    <th class="p-3">TARGET</th>
+                    <th class="p-3">SOURCE IP</th>
+                    <th class="p-3 text-right">CONTAINMENT</th>
+                  </tr>
+                </thead>
+                <tbody id="incidents-table-body" class="divide-y divide-gray-800/60"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Telemetry Log Feed (5 cols) -->
+        <div class="lg:col-span-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-mono text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="terminal" class="w-4 h-4 text-emerald-400"></i> Real-Time Telemetry Stream
+            </h3>
+            <button onclick="clearSocLogStream()" class="text-[11px] font-mono text-gray-500 hover:text-white cursor-pointer">
+              Clear
+            </button>
+          </div>
+
+          <div class="soc-card p-3 bg-black/90 h-[460px] flex flex-col justify-between">
+            <div class="overflow-y-auto terminal-scroll space-y-1.5 flex-1 pr-1" id="live-log-container">
+              <div class="text-gray-500 font-mono text-xs">[SYS] SOC Telemetry listener synchronized. Waiting for login events...</div>
+            </div>
+            <div class="pt-2 border-t border-gray-800 text-[10px] text-gray-500 font-mono flex items-center justify-between">
+              <span>ApexShield Sensor Engine: Online</span>
+              <span class="text-emerald-400">WebSocket Connected</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SUBTAB 2: PASSWORD APPROVAL WORKFLOW (ADMIN & SOC ANALYSTS) -->
+      <div id="subtab-approvals" class="hidden space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-mono text-white uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="key-round" class="w-4 h-4 text-amber-400"></i>
+              Employee Password Reset Authorizations
+            </h3>
+            <p class="text-xs text-gray-400 mt-0.5">Admin and SOC Co-Workers can authorize or reject employee password resets and lift account quarantines.</p>
+          </div>
+          <button onclick="fetchPasswordRequests()" class="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-gray-300 font-mono text-xs rounded-lg border border-gray-700 flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh List
+          </button>
+        </div>
+
+        <div class="soc-card overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-black/80 border-b border-gray-800 text-gray-400 font-mono">
+              <tr>
+                <th class="p-3">REQUEST TIME</th>
+                <th class="p-3">EMPLOYEE</th>
+                <th class="p-3">DEPARTMENT</th>
+                <th class="p-3">ACCOUNT STATE</th>
+                <th class="p-3">REQUEST STATUS</th>
+                <th class="p-3">REVIEWED BY</th>
+                <th class="p-3 text-right">AUTHORIZATION ACTION</th>
+              </tr>
+            </thead>
+            <tbody id="password-requests-table-body" class="divide-y divide-gray-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUBTAB 3: CO-WORKER TEAM MANAGEMENT (ADMIN ONLY) -->
+      <div id="subtab-coworkers" class="hidden space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-mono text-white uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="shield-check" class="w-4 h-4 text-purple-400"></i>
+              SOC Co-Workers & Security Personnel
+            </h3>
+            <p class="text-xs text-gray-400 mt-0.5">Admin has full authority to add, update, and remove SOC analysts.</p>
+          </div>
+          <button onclick="openAddCoworkerModal()" class="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-mono font-bold text-xs rounded-lg flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="user-plus" class="w-4 h-4"></i> Add SOC Co-Worker
+          </button>
+        </div>
+
+        <div class="soc-card overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-black/80 border-b border-gray-800 text-gray-400 font-mono">
+              <tr>
+                <th class="p-3">NAME & USERNAME</th>
+                <th class="p-3">EMAIL</th>
+                <th class="p-3">SOC ROLE</th>
+                <th class="p-3">CLEARANCE</th>
+                <th class="p-3">STATUS</th>
+                <th class="p-3 text-right">ADMIN ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="coworkers-table-body" class="divide-y divide-gray-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUBTAB 3: BRUTE FORCE TEST SIMULATOR -->
+      <div id="subtab-simulator" class="hidden space-y-4">
+        <div class="soc-card p-6 space-y-4">
+          <div>
+            <h3 class="text-sm font-mono font-bold text-white flex items-center gap-2">
+              <i data-lucide="crosshair" class="w-4 h-4 text-red-400"></i>
+              Brute Force Scenario Testing Terminal
+            </h3>
+            <p class="text-xs text-gray-400 mt-1">
+              Fire test simulations directly from this console to verify the sliding-window detector and automated alert pipeline.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl bg-gray-950 border border-emerald-500/30 space-y-2">
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">BENIGN FRICTION</span>
+              <h4 class="text-xs font-bold text-white">Employee Login Typo Friction</h4>
+              <p class="text-[11px] text-gray-400">3 mistyped attempts followed by 1 successful login on john.doe. (Result: NO lockout, benign tolerance).</p>
+              <button onclick="runAttackSim('friction')" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-emerald-300 font-mono text-xs rounded border border-emerald-500/40 cursor-pointer">
+                Simulate 3 Typos + Success
+              </button>
+            </div>
+
+            <div class="p-4 rounded-xl bg-gray-950 border border-red-500/40 space-y-2">
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-red-500/10 text-red-400">CRITICAL ATTACK</span>
+              <h4 class="text-xs font-bold text-white">High-Velocity Malware Burst</h4>
+              <p class="text-[11px] text-gray-400">7 rapid-fire failed attempts in under 2 seconds. (Result: Automatic Account Quarantine + CRITICAL Incident).</p>
+              <button onclick="runAttackSim('burst')" class="w-full py-2 bg-red-600 hover:bg-red-500 text-white font-mono text-xs font-bold rounded cursor-pointer">
+                Simulate Rapid Malware Burst
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <span class="text-[11px] font-mono text-gray-400">Simulator Output:</span>
+            <pre id="sim-terminal" class="p-3 bg-black rounded-lg border border-gray-800 text-[11px] text-emerald-400 font-mono h-40 overflow-y-auto terminal-scroll">[SIMULATOR READY] Click a simulation above to test.</pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL: ADD CO-WORKER -->
+  <div id="add-coworker-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="soc-card w-full max-w-md p-6 space-y-4 border-purple-500/40">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="font-bold text-white font-mono text-sm">Add New SOC Co-Worker</h3>
+        <button onclick="closeAddCoworkerModal()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <form onsubmit="handleAddCoworker(event)" class="space-y-3 font-mono text-xs">
+        <div>
+          <label class="block text-gray-300 mb-1">Full Name</label>
+          <input type="text" id="new-coworker-name" placeholder="e.g. David Vance" required class="w-full px-3 py-2 bg-black border border-gray-800 rounded text-white focus:outline-none focus:border-purple-500">
+        </div>
+        <div>
+          <label class="block text-gray-300 mb-1">Username</label>
+          <input type="text" id="new-coworker-username" placeholder="e.g. david.vance" required class="w-full px-3 py-2 bg-black border border-gray-800 rounded text-white focus:outline-none focus:border-purple-500">
+        </div>
+        <div>
+          <label class="block text-gray-300 mb-1">Email</label>
+          <input type="email" id="new-coworker-email" placeholder="david.vance@apexshield.corp" required class="w-full px-3 py-2 bg-black border border-gray-800 rounded text-white focus:outline-none focus:border-purple-500">
+        </div>
+        <div>
+          <label class="block text-gray-300 mb-1">SOC Role</label>
+          <select id="new-coworker-role" class="w-full px-3 py-2 bg-black border border-gray-800 rounded text-white focus:outline-none focus:border-purple-500">
+            <option value="SOC Analyst">SOC Analyst</option>
+            <option value="Senior SOC Specialist">Senior SOC Specialist</option>
+            <option value="Lead SOC Analyst">Lead SOC Analyst</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-gray-300 mb-1">Clearance Level</label>
+          <select id="new-coworker-clearance" class="w-full px-3 py-2 bg-black border border-gray-800 rounded text-white focus:outline-none focus:border-purple-500">
+            <option value="Secret">Secret</option>
+            <option value="Top Secret">Top Secret</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-gray-300 mb-1">Temporary Password</label>
+          <input type="password" id="new-coworker-password" required class="w-full px-3 py-2 bg-black border border-gray-800 rounded text-white focus:outline-none focus:border-purple-500">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded cursor-pointer mt-2">
+          Create Co-Worker
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT CO-WORKER -->
+  <div id="edit-coworker-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="soc-card w-full max-w-md p-6 space-y-4 border-gray-700">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="font-bold text-white font-mono text-sm">Update SOC Co-Worker</h3>
+        <button onclick="closeEditCoworkerModal()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <form onsubmit="handleEditCoworker(event)" class="space-y-3 font-mono text-xs">
+        <input type="hidden" id="edit-coworker-id">
+        <div>
+          <label class="block text-gray-300 mb-1">Full Name</label>
+          <input type="text" id="edit-coworker-name" required class="w-full px-3 py-2 bg-black border border-gray-800 rounded text-white focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-gray-300 mb-1">SOC Role</label>
+          <select id="edit-coworker-role" class="w-full px-3 py-2 bg-black border border-gray-800 rounded text-white focus:outline-none focus:border-emerald-500">
+            <option value="SOC Analyst">SOC Analyst</option>
+            <option value="Senior SOC Specialist">Senior SOC Specialist</option>
+            <option value="Lead SOC Analyst">Lead SOC Analyst</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-gray-300 mb-1">Clearance Level</label>
+          <select id="edit-coworker-clearance" class="w-full px-3 py-2 bg-black border border-gray-800 rounded text-white focus:outline-none focus:border-emerald-500">
+            <option value="Secret">Secret</option>
+            <option value="Top Secret">Top Secret</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-gray-300 mb-1">Account Lock State</label>
+          <select id="edit-coworker-locked" class="w-full px-3 py-2 bg-black border border-gray-800 rounded text-white focus:outline-none focus:border-emerald-500">
+            <option value="false">Active (Unlocked)</option>
+            <option value="true">Quarantined (Locked)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-gray-300 mb-1">Reset Password (Optional)</label>
+          <input type="password" id="edit-coworker-newpw" placeholder="Leave empty to keep current password" class="w-full px-3 py-2 bg-black border border-gray-800 rounded text-white focus:outline-none focus:border-emerald-500">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded cursor-pointer mt-2">
+          Save Changes
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <footer class="border-t border-gray-900 py-4 text-center text-xs text-gray-500 font-mono">
+    ApexShield AI-SOC Console © 2026. Restricted to Authorized Security Staff.
+  </footer>
+
+  <script src="/static-soc/js/soc.js"></script>
+</body>
+</html>

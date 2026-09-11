@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApexShield Technologies // Employee Intranet Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/static-portal/css/portal.css">
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+
+  <!-- TOP BRANDING NAVBAR -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400">
+          <i data-lucide="building-2" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <span class="font-bold text-white text-base tracking-wide">ApexShield <span class="text-sky-400">Technologies</span></span>
+          <span class="text-[11px] text-slate-400 block font-mono">Employee Digital Workspace</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/soc" class="text-xs px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1.5">
+          <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span>SOC Security Portal</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN VIEW CONTAINER -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8">
+
+    <!-- AUTHENTICATION VIEW (LOGIN SCREEN) -->
+    <div id="auth-view" class="max-w-md mx-auto my-12">
+      <div class="portal-card p-6 sm:p-8 space-y-6">
+        <div class="text-center space-y-2">
+          <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-400 mx-auto flex items-center justify-center">
+            <i data-lucide="lock-keyhole" class="w-6 h-6"></i>
+          </div>
+          <h2 class="text-xl font-bold text-white">Employee Single Sign-On</h2>
+          <p class="text-xs text-slate-400">Sign in to access corporate files, tools, and profile</p>
+        </div>
+
+        <!-- QUARANTINE WARNING BANNER (On High Velocity Brute Force Attack) -->
+        <div id="quarantine-banner" class="hidden p-4 rounded-xl bg-red-950/60 border border-red-500/40 text-xs space-y-3">
+          <div class="flex items-center gap-2 text-red-400 font-bold">
+            <i data-lucide="alert-octagon" class="w-4 h-4"></i>
+            <span>ACCOUNT QUARANTINED (ATTACK DETECTED)</span>
+          </div>
+          <p class="text-slate-300 leading-relaxed">
+            Your account was subjected to an automated brute force attack (5-7 attempts in seconds). The SOC defense engine locked your account for protection.
+          </p>
+          <button onclick="openResetModal()" class="w-full py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors">
+            <i data-lucide="key-round" class="w-3.5 h-3.5"></i> Set New Password (3-History Policy Enforced)
+          </button>
+        </div>
+
+        <!-- BENIGN FRICTION BANNER (On normal typing typo) -->
+        <div id="friction-banner" class="hidden p-3 rounded-lg bg-amber-950/40 border border-amber-500/40 text-xs text-amber-300 flex items-center gap-2">
+          <i data-lucide="info" class="w-4 h-4 shrink-0"></i>
+          <span id="friction-text">Invalid password. Attempt 1 of 4. (Normal user friction tolerance active).</span>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form id="portal-login-form" onsubmit="handleLogin(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-mono text-slate-300 mb-1">Corporate Username</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
+                <i data-lucide="user" class="w-4 h-4"></i>
+              </span>
+              <input type="text" id="login-username" placeholder="Enter corporate username or email" required class="w-full pl-9 pr-3 py-2 bg-slate-900/80 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-sky-500 font-mono">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-mono text-slate-300 mb-1">Password</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
+                <i data-lucide="key" class="w-4 h-4"></i>
+              </span>
+              <input type="password" id="login-password" placeholder="Enter password" required class="w-full pl-9 pr-3 py-2 bg-slate-900/80 border border-slate-800 rounded-lg text-sm text-white focus:outline-none focus:border-sky-500 font-mono">
+            </div>
+          </div>
+
+          <button type="submit" class="btn-portal-primary w-full py-2.5 text-sm flex items-center justify-center gap-2">
+            <i data-lucide="log-in" class="w-4 h-4"></i> Authenticate Session
+          </button>
+        </form>
+
+        <div class="pt-2 border-t border-slate-800 text-center">
+          <button onclick="openResetModal()" class="text-xs text-slate-400 hover:text-sky-400 transition-colors">
+            Forgot or need to change password? Click here
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD VIEW (AUTHENTICATED EMPLOYEE) -->
+    <div id="dashboard-view" class="hidden space-y-8">
+      
+      <!-- USER PROFILE HERO -->
+      <div class="portal-card p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-2xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 font-bold text-xl font-mono" id="user-initials">
+            JD
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-xl font-bold text-white" id="user-display-name">John Doe</h2>
+              <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-sky-500/20 text-sky-300 border border-sky-500/40" id="user-clearance">Confidential</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5" id="user-role-dept">Senior Software Engineer • Engineering</p>
+            <p class="text-[11px] text-slate-500 font-mono" id="user-email">john.doe@apexshield.corp</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button onclick="openResetModal()" class="px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 flex items-center gap-1.5 transition-colors">
+            <i data-lucide="shield-check" class="w-4 h-4 text-sky-400"></i> Change Password
+          </button>
+          <button onclick="handleLogout()" class="px-3 py-2 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-xs font-medium text-red-400 flex items-center gap-1.5 transition-colors">
+            <i data-lucide="log-out" class="w-4 h-4"></i> Sign Out
+          </button>
+        </div>
+      </div>
+
+      <!-- CORPORATE DATA VAULT -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+            <i data-lucide="folder-git-2" class="w-4 h-4 text-sky-400"></i>
+            Corporate Data Vault & Documents
+          </h3>
+          <span class="text-xs text-slate-500 font-mono">Protected by Role Clearance</span>
+        </div>
+        <div id="documents-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- ANNOUNCEMENTS -->
+      <div class="portal-card p-6 space-y-4">
+        <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+          <i data-lucide="megaphone" class="w-4 h-4 text-amber-400"></i>
+          Company Security Bulletins
+        </h3>
+        <div id="announcements-container" class="space-y-3"></div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- PASSWORD RESET MODAL (3-HISTORY RULE) -->
+  <div id="reset-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="portal-card w-full max-w-md p-6 space-y-5 border-sky-500/40">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400">
+            <i data-lucide="key-round" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-white text-sm sm:text-base">Password Remediation</h3>
+            <p class="text-[11px] text-slate-400 font-mono">3-Password History Exclusion Enforced</p>
+          </div>
+        </div>
+        <button onclick="closeResetModal()" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-3 rounded-lg bg-sky-950/40 border border-sky-500/30 text-xs text-slate-300 space-y-1">
+        <span class="font-bold text-sky-400 block">Password Security Policy:</span>
+        <ul class="list-disc list-inside text-slate-400 text-[11px] space-y-0.5">
+          <li>Minimum 8 characters with Uppercase, Lowercase, Number, and Symbol.</li>
+          <li><strong class="text-slate-200">Cannot match your active password.</strong></li>
+          <li><strong class="text-slate-200">Cannot match any of your last 3 previous passwords.</strong></li>
+          <li><strong class="text-sky-300">Requires Admin or SOC Co-Worker approval before activation.</strong></li>
+        </ul>
+      </div>
+
+      <div id="reset-alert" class="hidden p-3 rounded-lg text-xs font-mono"></div>
+
+      <form onsubmit="handlePasswordReset(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-mono text-slate-300 mb-1">Corporate Username</label>
+          <input type="text" id="reset-username" placeholder="Enter corporate username or email" required class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-sky-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-mono text-slate-300 mb-1">New Password</label>
+          <input type="password" id="reset-new-password" placeholder="Enter new compliant password" required class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-sky-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-mono text-slate-300 mb-1">Confirm New Password</label>
+          <input type="password" id="reset-confirm-password" placeholder="Repeat new password" required class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-sky-500">
+        </div>
+
+        <div class="text-[11px] text-slate-400 font-mono p-2.5 rounded bg-slate-900/80 border border-slate-800">
+          <p class="text-slate-300 font-semibold mb-0.5"><i data-lucide="shield-check" class="w-3.5 h-3.5 inline text-sky-400"></i> Security Authorization Policy:</p>
+          <p>Upon submission, your request will be queued for security verification. An Administrator or SOC Analyst will review and approve the request to activate your new password and release any quarantine.</p>
+        </div>
+
+        <button type="submit" class="btn-portal-primary w-full py-2.5 text-xs justify-center flex items-center gap-2">
+          <i data-lucide="send" class="w-3.5 h-3.5"></i> Submit Request For Approval
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <footer class="border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+    ApexShield Enterprise Technologies © 2026. Internal Employee Network.
+  </footer>
+
+  <script src="/static-portal/js/portal.js"></script>
+</body>
+</html>

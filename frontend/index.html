@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApexShield // AI-SOC & Enterprise Incident Response Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="hud-grid-bg text-gray-100 flex flex-col min-h-screen">
+
+  <!-- TOP HUD NAVIGATION -->
+  <header class="border-b border-gray-800 bg-[#070c14]/90 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+          <i data-lucide="shield-alert" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold tracking-wider text-sm sm:text-base text-white">APEX<span class="text-emerald-400">SHIELD</span></span>
+            <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">AI-SOC v2.0</span>
+          </div>
+          <p class="text-[11px] text-gray-400 font-mono hidden sm:block">Automated Velocity Defense & DFIR Incident Engine</p>
+        </div>
+      </div>
+
+      <div class="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-full bg-gray-900/90 border border-gray-800 text-xs font-mono">
+        <span class="pulse-live" id="live-indicator"></span>
+        <span class="text-gray-300" id="ws-status-text">WEBSOCKET: CONNECTED</span>
+        <span class="text-gray-600">|</span>
+        <span class="text-emerald-400" id="sensor-status">ACTIVE DEFENSE</span>
+      </div>
+
+      <nav class="flex items-center gap-1.5 sm:gap-2">
+        <button onclick="switchTab('portal')" id="nav-portal" class="cursor-pointer px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+          <i data-lucide="layout" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Company Portal</span>
+        </button>
+        <button onclick="switchTab('soc')" id="nav-soc" class="cursor-pointer px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-gray-400 hover:text-gray-200 border border-transparent hover:border-gray-800 flex items-center gap-1.5">
+          <i data-lucide="activity" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">SOC Command Center</span>
+        </button>
+        <button onclick="switchTab('simulator')" id="nav-simulator" class="cursor-pointer px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-gray-400 hover:text-gray-200 border border-transparent hover:border-gray-800 flex items-center gap-1.5">
+          <i data-lucide="zap" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Attack Simulator</span>
+        </button>
+        <button onclick="switchTab('docs')" id="nav-docs" class="cursor-pointer px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-gray-400 hover:text-gray-200 border border-transparent hover:border-gray-800 flex items-center gap-1.5">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">DFIR Runbooks</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- TAB 1: PORTAL -->
+    <section id="tab-portal" class="space-y-6">
+      <div id="portal-auth-container" class="max-w-md mx-auto my-8">
+        <div class="hud-card p-6 sm:p-8 space-y-6">
+          <div class="text-center space-y-2">
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mx-auto flex items-center justify-center">
+              <i data-lucide="lock" class="w-6 h-6"></i>
+            </div>
+            <h2 class="text-xl font-bold text-white tracking-wide">ApexShield Enterprise Portal</h2>
+            <p class="text-xs text-gray-400">Authorized Employee Single Sign-On</p>
+          </div>
+
+          <div id="quarantine-banner" class="hidden p-4 rounded-lg bg-red-950/60 border border-red-500/40 text-xs space-y-3">
+            <div class="flex items-start gap-2.5 text-red-400 font-semibold">
+              <i data-lucide="alert-triangle" class="w-4 h-4 mt-0.5 shrink-0"></i>
+              <span>ACCOUNT QUARANTINED (HIGH VELOCITY ATTACK DETECTED)</span>
+            </div>
+            <p class="text-gray-300 leading-relaxed">
+              Your account experienced a high-velocity credential attack (5-7 attempts in seconds). The SOC defense engine has quarantined the account.
+            </p>
+            <button onclick="openPasswordResetModal()" class="w-full btn-danger text-xs py-2 justify-center">
+              <i data-lucide="key" class="w-3.5 h-3.5"></i>
+              Set New Password (3-History Policy Enforced)
+            </button>
+          </div>
+
+          <div id="friction-banner" class="hidden p-3 rounded-lg bg-amber-950/40 border border-amber-500/40 text-xs text-amber-300 flex items-center gap-2">
+            <i data-lucide="info" class="w-4 h-4 shrink-0"></i>
+            <span id="friction-text">Invalid password. Attempt 1 of 4. (Normal user friction tolerance active).</span>
+          </div>
+
+          <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-mono text-gray-300 mb-1">Corporate Username</label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500"><i data-lucide="user" class="w-4 h-4"></i></span>
+                <input type="text" id="login-username" value="john.doe" required class="w-full pl-9 pr-3 py-2 bg-gray-950/80 border border-gray-800 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 font-mono">
+              </div>
+              <span class="text-[11px] text-gray-500 mt-1 block">Default demo user: <code class="text-emerald-400">john.doe</code></span>
+            </div>
+
+            <div>
+              <label class="block text-xs font-mono text-gray-300 mb-1">Password</label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500"><i data-lucide="key-round" class="w-4 h-4"></i></span>
+                <input type="password" id="login-password" value="Password123!" required class="w-full pl-9 pr-3 py-2 bg-gray-950/80 border border-gray-800 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 font-mono">
+              </div>
+              <span class="text-[11px] text-gray-500 mt-1 block">Active password: <code class="text-emerald-400">Password123!</code></span>
+            </div>
+
+            <button type="submit" id="login-submit-btn" class="w-full btn-primary justify-center text-sm py-2.5">
+              <i data-lucide="log-in" class="w-4 h-4"></i>
+              Authenticate Session
+            </button>
+          </form>
+
+          <div class="pt-2 border-t border-gray-800 text-center">
+            <button onclick="openPasswordResetModal()" class="cursor-pointer text-xs text-gray-400 hover:text-emerald-400">
+              Need to reset your password? Click here
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="portal-dashboard" class="hidden space-y-6">
+        <div class="hud-card p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xl font-mono" id="user-avatar-initials">JD</div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-lg sm:text-xl font-bold text-white" id="user-display-name">John Doe</h2>
+                <span class="px-2 py-0.5 text-[11px] font-mono rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" id="user-clearance-badge">Top Secret</span>
+              </div>
+              <p class="text-xs text-gray-400 font-mono" id="user-meta">Engineering | Staff Member | john.doe@apexshield.corp</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="openPasswordResetModal()" class="btn-secondary text-xs">
+              <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+              Change Password
+            </button>
+            <button onclick="handleLogout()" class="btn-secondary text-xs text-red-400 hover:text-red-300">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+              Logout
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-mono text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="folder-lock" class="w-4 h-4 text-emerald-400"></i>
+              Confidential Corporate Data Vault
+            </h3>
+            <span class="text-xs text-gray-500">Access strictly audited by SIEM</span>
+          </div>
+          <div id="documents-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+        <div class="hud-card p-6 space-y-4">
+          <h3 class="text-sm font-mono text-gray-300 uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="bell" class="w-4 h-4 text-cyan-400"></i>
+            Active Enterprise Security Bulletins
+          </h3>
+          <div id="announcements-container" class="space-y-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: SOC COMMAND CENTER -->
+    <section id="tab-soc" class="hidden space-y-6">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div class="hud-card p-4">
+          <div class="flex items-center justify-between text-gray-400 text-xs font-mono">
+            <span>TOTAL EVENTS</span>
+            <i data-lucide="hard-drive" class="w-4 h-4 text-cyan-400"></i>
+          </div>
+          <div class="text-2xl font-bold font-mono text-white mt-2" id="kpi-total-events">0</div>
+          <span class="text-[10px] text-emerald-400 font-mono">Streaming in real-time</span>
+        </div>
+
+        <div class="hud-card p-4">
+          <div class="flex items-center justify-between text-gray-400 text-xs font-mono">
+            <span>ACTIVE INCIDENTS</span>
+            <i data-lucide="alert-octagon" class="w-4 h-4 text-red-400"></i>
+          </div>
+          <div class="text-2xl font-bold font-mono text-red-400 mt-2" id="kpi-active-incidents">0</div>
+          <span class="text-[10px] text-red-400/80 font-mono">Open / Investigating</span>
+        </div>
+
+        <div class="hud-card p-4">
+          <div class="flex items-center justify-between text-gray-400 text-xs font-mono">
+            <span>QUARANTINED USERS</span>
+            <i data-lucide="user-x" class="w-4 h-4 text-amber-400"></i>
+          </div>
+          <div class="text-2xl font-bold font-mono text-amber-400 mt-2" id="kpi-locked-accounts">0</div>
+          <span class="text-[10px] text-gray-400 font-mono">Password reset required</span>
+        </div>
+
+        <div class="hud-card p-4">
+          <div class="flex items-center justify-between text-gray-400 text-xs font-mono">
+            <span>BLOCKED FIREWALL IPS</span>
+            <i data-lucide="shield-ban" class="w-4 h-4 text-purple-400"></i>
+          </div>
+          <div class="text-2xl font-bold font-mono text-purple-400 mt-2" id="kpi-blocked-ips">0</div>
+          <span class="text-[10px] text-gray-400 font-mono">Perimeter drops</span>
+        </div>
+
+        <div class="hud-card p-4 col-span-2 sm:col-span-1">
+          <div class="flex items-center justify-between text-gray-400 text-xs font-mono">
+            <span>AVG RISK SCORE</span>
+            <i data-lucide="gauge" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div class="text-2xl font-bold font-mono text-emerald-400 mt-2" id="kpi-avg-risk">92<span class="text-xs text-gray-400">/100</span></div>
+          <span class="text-[10px] text-emerald-400 font-mono">High-Velocity MITRE T1110</span>
+        </div>
+      </div>
+
+      <div class="hud-card p-4 flex flex-col sm:flex-row items-center gap-3">
+        <div class="relative flex-1 w-full">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500"><i data-lucide="search" class="w-4 h-4"></i></span>
+          <input type="text" id="threat-hunt-input" onkeyup="handleThreatHunt(event)" placeholder="Threat hunt query (e.g. 'john.doe', '10.99.1.5', 'BRUTE_FORCE', 'CRITICAL')..." class="w-full pl-9 pr-3 py-2 bg-gray-950/90 border border-gray-800 rounded-lg text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500 font-mono">
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <button onclick="fetchSOCData()" class="btn-secondary text-xs py-2 px-3">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-7 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-mono text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="flame" class="w-4 h-4 text-red-400"></i>
+              Security Incident Triage Queue
+            </h3>
+            <span class="text-xs font-mono text-gray-500" id="incidents-count">0 INCIDENTS</span>
+          </div>
+
+          <div class="hud-card overflow-hidden">
+            <div class="overflow-x-auto max-h-[480px] terminal-scroll">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="bg-gray-950/80 border-b border-gray-800 text-gray-400 sticky top-0">
+                  <tr>
+                    <th class="p-3">INCIDENT</th>
+                    <th class="p-3">ATTACK TYPE</th>
+                    <th class="p-3">SEVERITY</th>
+                    <th class="p-3">TARGET</th>
+                    <th class="p-3">SOURCE IP</th>
+                    <th class="p-3 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="incidents-table-body" class="divide-y divide-gray-800/60"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-mono text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="terminal" class="w-4 h-4 text-emerald-400"></i>
+              Live Telemetry Stream
+            </h3>
+            <span class="text-xs text-emerald-400 font-mono flex items-center gap-1.5">
+              <span class="pulse-live"></span> WS LIVE
+            </span>
+          </div>
+
+          <div class="hud-card p-3 bg-black/80 font-mono text-[11px] h-[480px] flex flex-col">
+            <div class="flex-1 overflow-y-auto terminal-scroll space-y-2 pr-1" id="telemetry-log-stream">
+              <div class="text-gray-500">[SYS] SOC Telemetry listener synchronized. Waiting for security events...</div>
+            </div>
+            <div class="pt-2 border-t border-gray-800 flex items-center justify-between text-[10px] text-gray-500">
+              <span>ApexShield Sensor Hub: active</span>
+              <button onclick="clearEventLogs()" class="hover:text-gray-300 cursor-pointer">Clear Buffer</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: ATTACK SIMULATOR -->
+    <section id="tab-simulator" class="hidden space-y-6">
+      <div class="hud-card p-6 space-y-4">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="crosshair" class="w-5 h-5 text-red-400"></i>
+            Interactive Threat & Anomaly Simulator
+          </h2>
+          <p class="text-xs text-gray-400 mt-1">
+            Execute controlled attack scenarios to test the sliding-window velocity detection engine, benign human friction baseline, and containment playbooks.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="p-4 rounded-xl bg-gray-900/60 border border-emerald-500/30 hover:border-emerald-400 transition-all space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">BENIGN BEHAVIOR</span>
+              <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+            <h4 class="text-sm font-bold text-white">Normal Employee Login Friction</h4>
+            <p class="text-xs text-gray-400">Employee mistakenly enters wrong password 3 times with typing delay, followed by success.</p>
+            <div class="text-[11px] text-emerald-400 font-mono">Outcome: NO account lock, benign status.</div>
+            <button onclick="runSimulation('human-friction')" class="w-full btn-secondary text-xs py-2 justify-center hover:border-emerald-500 hover:text-emerald-400">Simulate Human Friction</button>
+          </div>
+
+          <div class="p-4 rounded-xl bg-gray-900/60 border border-red-500/30 hover:border-red-500 transition-all space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-red-500/10 text-red-400 border border-red-500/30">CRITICAL THREAT</span>
+              <i data-lucide="bot" class="w-4 h-4 text-red-400"></i>
+            </div>
+            <h4 class="text-sm font-bold text-white">Malware Automated Brute Force</h4>
+            <p class="text-xs text-gray-400">High-velocity credential stuffing bot firing 7 failed attempts in under 2 seconds.</p>
+            <div class="text-[11px] text-red-400 font-mono">Outcome: Account quarantined, CRITICAL incident.</div>
+            <button onclick="runSimulation('malware-burst')" class="w-full btn-danger text-xs py-2 justify-center">Simulate Malware Burst</button>
+          </div>
+
+          <div class="p-4 rounded-xl bg-gray-900/60 border border-amber-500/30 hover:border-amber-500 transition-all space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">HIGH THREAT</span>
+              <i data-lucide="database" class="w-4 h-4 text-amber-400"></i>
+            </div>
+            <h4 class="text-sm font-bold text-white">SQL Injection Exploit</h4>
+            <p class="text-xs text-gray-400">Adversary tests input with <code class="text-amber-300">' UNION SELECT ...</code> to bypass auth.</p>
+            <div class="text-[11px] text-amber-400 font-mono">Outcome: Intercepted, MITRE T1190.</div>
+            <button onclick="runSimulation('sqli')" class="w-full btn-secondary text-xs py-2 justify-center hover:border-amber-500 hover:text-amber-400">Simulate SQL Injection</button>
+          </div>
+
+          <div class="p-4 rounded-xl bg-gray-900/60 border border-cyan-500/30 hover:border-cyan-500 transition-all space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">MEDIUM THREAT</span>
+              <i data-lucide="code-xml" class="w-4 h-4 text-cyan-400"></i>
+            </div>
+            <h4 class="text-sm font-bold text-white">Cross-Site Scripting (XSS)</h4>
+            <p class="text-xs text-gray-400">Malicious payload attempting cookie hijacking via embedded DOM script tags.</p>
+            <div class="text-[11px] text-cyan-400 font-mono">Outcome: Input sanitized, MITRE T1059.007.</div>
+            <button onclick="runSimulation('xss')" class="w-full btn-secondary text-xs py-2 justify-center hover:border-cyan-500 hover:text-cyan-400">Simulate XSS Attack</button>
+          </div>
+
+          <div class="p-4 rounded-xl bg-gray-900/60 border border-purple-500/30 hover:border-purple-500 transition-all space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-purple-500/10 text-purple-400 border border-purple-500/30">RECONNAISSANCE</span>
+              <i data-lucide="radar" class="w-4 h-4 text-purple-400"></i>
+            </div>
+            <h4 class="text-sm font-bold text-white">Port Scanning Sweep</h4>
+            <p class="text-xs text-gray-400">Adversary executes rapid TCP SYN discovery across 8 perimeter server ports.</p>
+            <div class="text-[11px] text-purple-400 font-mono">Outcome: Recon detected, MITRE T1046.</div>
+            <button onclick="runSimulation('port-scan')" class="w-full btn-secondary text-xs py-2 justify-center hover:border-purple-500 hover:text-purple-400">Simulate Port Scan</button>
+          </div>
+
+          <div class="p-4 rounded-xl bg-gray-900/60 border border-gray-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-gray-800 text-gray-300">SCRIPTS SUITE</span>
+              <i data-lucide="terminal" class="w-4 h-4 text-gray-400"></i>
+            </div>
+            <h4 class="text-sm font-bold text-white">Multi-Language Tools</h4>
+            <p class="text-xs text-gray-400">CLI simulators in Python, PowerShell, Bash, SQL, and Perl.</p>
+            <div class="text-[11px] text-gray-400 font-mono">Located in <code class="text-emerald-400">scripts/</code> directory.</div>
+            <button onclick="switchTab('docs')" class="w-full btn-secondary text-xs py-2 justify-center">View Script Guides</button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs font-mono text-gray-400">
+            <span class="flex items-center gap-1.5"><i data-lucide="terminal" class="w-4 h-4 text-emerald-400"></i> SIMULATOR STDOUT & RESPONSE</span>
+            <button onclick="clearSimConsole()" class="hover:text-gray-200 cursor-pointer">Clear Console</button>
+          </div>
+          <div class="hud-card p-4 bg-black/90 font-mono text-xs text-emerald-400 h-64 overflow-y-auto terminal-scroll" id="sim-console">
+            <div>[SIM-CONSOLE READY] Select an attack scenario above or run CLI scripts to view live payload telemetry.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: DFIR RUNBOOKS -->
+    <section id="tab-docs" class="hidden space-y-6">
+      <div class="hud-card p-6 sm:p-8 space-y-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-800 pb-4">
+          <div>
+            <h2 class="text-xl font-bold text-white">Digital Forensics & Incident Response (DFIR) Manual</h2>
+            <p class="text-xs text-gray-400 mt-1">Academic & Industry Standard Incident Handling Architecture</p>
+          </div>
+          <button onclick="exportDFIRReport()" class="btn-primary text-xs">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            Export DFIR Incident Report (Markdown)
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs leading-relaxed text-gray-300">
+          <div class="space-y-3 p-4 rounded-xl bg-gray-950/60 border border-gray-800">
+            <h4 class="font-bold text-white font-mono text-sm flex items-center gap-2">
+              <i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i>
+              1. Detection Engineering & Velocity Logic
+            </h4>
+            <p>The system deploys a sliding-window rate analysis queue:</p>
+            <ul class="list-disc list-inside space-y-1 text-gray-400 font-mono text-[11px]">
+              <li><strong class="text-gray-200">Human Friction Baseline:</strong> 3-4 failures over 180s with typing jitter -> tolerated without lockout.</li>
+              <li><strong class="text-gray-200">Automated Malware Burst:</strong> 5 or more failures in 15s -> classified as critical credential guessing.</li>
+              <li><strong class="text-gray-200">Containment:</strong> User is automatically marked <code class="text-red-400">is_locked = True</code> and <code class="text-red-400">must_reset_password = True</code>.</li>
+            </ul>
+          </div>
+
+          <div class="space-y-3 p-4 rounded-xl bg-gray-950/60 border border-gray-800">
+            <h4 class="font-bold text-white font-mono text-sm flex items-center gap-2">
+              <i data-lucide="key" class="w-4 h-4 text-cyan-400"></i>
+              2. 3-Password History Cryptographic Policy
+            </h4>
+            <p>When a quarantined employee initiates password remediation:</p>
+            <ul class="list-disc list-inside space-y-1 text-gray-400 font-mono text-[11px]">
+              <li>Complexity: Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special symbol.</li>
+              <li>Active Check: Plaintext compared with current salted bcrypt hash.</li>
+              <li>History Check: Salted hash checked against last 3 records in <code class="text-cyan-400">password_history</code> table.</li>
+              <li>If any match is detected, the password reset is rejected with an explanatory security policy error.</li>
+            </ul>
+          </div>
+
+          <div class="space-y-3 p-4 rounded-xl bg-gray-950/60 border border-gray-800">
+            <h4 class="font-bold text-white font-mono text-sm flex items-center gap-2">
+              <i data-lucide="brain" class="w-4 h-4 text-purple-400"></i>
+              3. AI SOC Analyst Architecture
+            </h4>
+            <p>When an incident triggers, the AI Security Analyst engine evaluates forensic metadata:</p>
+            <ul class="list-disc list-inside space-y-1 text-gray-400 font-mono text-[11px]">
+              <li>Cadence and velocity time-span calculation.</li>
+              <li>MITRE ATT&CK Matrix mapping (<code class="text-purple-300">T1110.001</code>, <code class="text-purple-300">T1190</code>, <code class="text-purple-300">T1059.007</code>, <code class="text-purple-300">T1046</code>).</li>
+              <li>Evidence Timeline generation.</li>
+              <li>Actionable SOC Runbook playbooks (Containment, Quarantine, Firewall rules).</li>
+            </ul>
+          </div>
+
+          <div class="space-y-3 p-4 rounded-xl bg-gray-950/60 border border-gray-800">
+            <h4 class="font-bold text-white font-mono text-sm flex items-center gap-2">
+              <i data-lucide="terminal" class="w-4 h-4 text-amber-400"></i>
+              4. Multi-Language CLI Script Suite
+            </h4>
+            <p>Simulate and audit using any environment of choice:</p>
+            <ul class="list-disc list-inside space-y-1 text-gray-400 font-mono text-[11px]">
+              <li><strong class="text-white">Python:</strong> <code class="text-emerald-400">python scripts/simulate_attacks.py --attack all</code></li>
+              <li><strong class="text-white">PowerShell:</strong> <code class="text-cyan-400">.\scripts\simulate_attack.ps1 -TargetUser john.doe</code></li>
+              <li><strong class="text-white">Bash:</strong> <code class="text-amber-400">bash scripts/simulate_attack.sh</code></li>
+              <li><strong class="text-white">SQL:</strong> <code class="text-purple-400">sqlite3 apexshield_soc.db &lt; scripts/database_audit.sql</code></li>
+              <li><strong class="text-white">Perl:</strong> <code class="text-red-400">perl scripts/network_recon_sim.pl 127.0.0.1</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL 1: INCIDENT TRIAGE & AI REPORT -->
+  <div id="incident-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="hud-card w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border-red-500/40">
+      
+      <div class="p-4 sm:p-5 border-b border-gray-800 flex items-center justify-between bg-gray-950/80">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-bold text-white font-mono text-sm sm:text-base" id="modal-incident-title">Incident Details</h3>
+              <span id="modal-incident-badge" class="px-2 py-0.5 text-[10px] font-mono rounded bg-red-500/20 text-red-400 border border-red-500/40">CRITICAL</span>
+            </div>
+            <p class="text-xs text-gray-400 font-mono" id="modal-incident-meta">INC-20260910-001 | Target: john.doe | 10.99.1.5</p>
+          </div>
+        </div>
+        <button onclick="closeIncidentModal()" class="cursor-pointer text-gray-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 sm:p-6 overflow-y-auto terminal-scroll space-y-6 text-xs">
+        <div class="p-4 rounded-xl bg-gray-950/70 border border-purple-500/30 space-y-2">
+          <div class="flex items-center justify-between text-purple-400 font-mono font-semibold">
+            <span class="flex items-center gap-1.5"><i data-lucide="sparkles" class="w-4 h-4"></i> AI SOC ANALYST TRIAGE SUMMARY</span>
+            <span class="text-[10px] text-gray-500" id="modal-ai-model">ApexShield LLM v3.4</span>
+          </div>
+          <p class="text-gray-200 leading-relaxed" id="modal-ai-summary">Loading AI triage report...</p>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-mono font-semibold text-gray-300 uppercase tracking-wider">Detection Heuristics & Cadence</h4>
+          <p class="text-gray-400 leading-relaxed p-3 rounded-lg bg-gray-950/60 border border-gray-800" id="modal-detection-reason">Velocity analysis detected...</p>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-mono font-semibold text-gray-300 uppercase tracking-wider">MITRE ATT&CK Matrix Mapping</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="modal-mitre-container"></div>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-mono font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> Recommended SOC Response Actions (Runbook)
+          </h4>
+          <ul class="space-y-1.5 text-gray-300 font-mono p-3 rounded-lg bg-gray-950/60 border border-gray-800" id="modal-actions-list"></ul>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-mono font-semibold text-gray-300 uppercase tracking-wider">Forensic Evidence Metadata</h4>
+          <pre class="p-3 rounded-lg bg-black font-mono text-[11px] text-emerald-400 overflow-x-auto terminal-scroll" id="modal-evidence-raw">{}</pre>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-gray-800 bg-gray-950/80 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <button onclick="executeActionOnCurrentIncident('lock_account')" class="btn-danger text-xs py-1.5">
+            <i data-lucide="lock" class="w-3.5 h-3.5"></i> Quarantine Account
+          </button>
+          <button onclick="executeActionOnCurrentIncident('unlock_account')" class="btn-secondary text-xs py-1.5 text-emerald-400">
+            <i data-lucide="unlock" class="w-3.5 h-3.5"></i> Unlock Account
+          </button>
+          <button onclick="executeActionOnCurrentIncident('block_ip')" class="btn-secondary text-xs py-1.5 text-red-400">
+            <i data-lucide="shield-ban" class="w-3.5 h-3.5"></i> Block IP
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="updateIncidentStatus('CONTAINED')" class="btn-secondary text-xs py-1.5">Mark Contained</button>
+          <button onclick="updateIncidentStatus('RESOLVED')" class="btn-primary text-xs py-1.5">Resolve Incident</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL 2: PASSWORD RESET (3-HISTORY RULE) -->
+  <div id="password-reset-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="hud-card w-full max-w-md p-6 space-y-5 border-emerald-500/40">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+            <i data-lucide="key" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-white text-sm sm:text-base">Password Remediation</h3>
+            <p class="text-[11px] text-gray-400 font-mono">3-Password History Policy Enforced</p>
+          </div>
+        </div>
+        <button onclick="closePasswordResetModal()" class="cursor-pointer text-gray-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-gray-300 space-y-1">
+        <div class="text-emerald-400 font-bold flex items-center gap-1">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Mandatory Password Policy:
+        </div>
+        <ul class="list-disc list-inside text-gray-400 space-y-0.5">
+          <li>Minimum 8 characters with Uppercase, Lowercase, Number, and Symbol.</li>
+          <li><strong class="text-gray-200">Cannot match your active password.</strong></li>
+          <li><strong class="text-gray-200">Cannot match any of your last 3 previous passwords.</strong></li>
+        </ul>
+      </div>
+
+      <div id="reset-alert" class="hidden p-3 rounded-lg text-xs font-mono"></div>
+
+      <form id="reset-form" onsubmit="handlePasswordReset(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-mono text-gray-300 mb-1">Target Account Username</label>
+          <input type="text" id="reset-username" value="john.doe" required class="w-full px-3 py-2 bg-gray-950/80 border border-gray-800 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-mono text-gray-300 mb-1">New Password</label>
+          <input type="password" id="reset-new-password" placeholder="e.g. CyberDefense#2027!" required class="w-full px-3 py-2 bg-gray-950/80 border border-gray-800 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-mono text-gray-300 mb-1">Confirm New Password</label>
+          <input type="password" id="reset-confirm-password" placeholder="Repeat new password" required class="w-full px-3 py-2 bg-gray-950/80 border border-gray-800 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div class="text-[11px] text-gray-500 font-mono space-y-1">
+          <p>Tip for testing 3-History rejection on <code class="text-emerald-400">john.doe</code>:</p>
+          <p>Try entering: <code class="text-amber-400">OldSecret1!</code>, <code class="text-amber-400">Summer2025!</code>, or <code class="text-amber-400">Password123!</code></p>
+        </div>
+
+        <button type="submit" class="w-full btn-primary justify-center text-xs py-2.5">
+          <i data-lucide="check" class="w-4 h-4"></i> Verify & Commit New Password
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
